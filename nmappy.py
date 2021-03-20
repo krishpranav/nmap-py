@@ -155,3 +155,29 @@ def parse_arguments():
         sys.exit(1)
 
     return parser.parse_args()
+
+def ping(ip, timing):
+    # Windows (win32)
+    if sys.platform == 'win32':
+        cmd = ['ping', '-n', '1', '-w', str(2000/timing), ip]
+        # Success: Reply from 127.0.0.1: bytes=32 time<1ms TTL=128
+        # Fail: Request timed out.
+        pattern = '^Reply from ([0-9]{1,3}\.?){4}: bytes=[0-9]+ time[=<]?(?P<MS>([0-9]+))ms TTL=[0-9]+\r$'
+    # Linux (linux2)
+    else:
+        cmd = ['timeout', '%.2f' % (2.0/timing), 'ping', '-s', '24', '-c', '1', ip]
+        # Success: 1 packets transmitted, 1 received, 0% packet loss, time 0ms
+        # Fail: [empty]
+        pattern = '^1 packets transmitted, 1 received, 0% packet loss, time (?P<MS>([0-9]+))ms$'
+    
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    output = process.communicate()[0]
+
+    ms = -1
+    m = re.search(pattern, output, flag=re.MULTILINE)
+    if m is not None:
+        ms = int(m.group('MS'))
+    
+    process.wait()
+
+    return ms
