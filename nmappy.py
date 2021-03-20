@@ -312,4 +312,20 @@ def main():
                 latency = ' (%.2fs latency)' % (ms / 1000.0)
             print_line('Host is up%s.' % latency, args.output)
 
+            if args.ping_scan:
+                continue
+        
+            #port scan
+            table = AsciiTable(args.ports)
+            table.print_heading()
+            results = []
+            for port in args.ports:
+                state = check_port(ip, args.proto, port, args.timing)
+                results.append([port, state])
+
+                if len(args.ports) <= MAX_RESULTS_DISPLAY or args.verbosity > 0 or state:
+                    table.print_line(args.proto, port, state, args.output)
+            args.target[target] = (ip, ms, results)
+            
+
 
