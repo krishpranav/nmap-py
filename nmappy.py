@@ -91,3 +91,8 @@ def port_specification(value):
 
     return ports
 
+def output_validate(value):
+    if value == 'X':
+        raise argparse.ArgumentTypeError('Currently the XML output option is not supported')
+    
+    return value
