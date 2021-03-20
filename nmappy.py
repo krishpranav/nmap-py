@@ -56,3 +56,17 @@ def target_spec(value):
 
     return targets
 
+def check_file_exists(value):
+    if not os.path.isfile(value):
+        raise argparse.ArgumentTypeError('File \'%s\' does not exist.' % value)
+
+    return value
+
+def read_input_list(args):
+    targets = {}
+    with open(args.input_filename, 'r') as input:
+        for line in input:
+            dict.update(targets, target_spec(line.strip()))
+    
+    return targets
+
