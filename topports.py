@@ -30,4 +30,5 @@ def main():
 
     print ','.join([s[0].split('/')[0] for s in services[0:max]])
 
-if __name__ = '__main__': main()
+if __name__ == '__main__':
+    main()
