@@ -251,7 +251,65 @@ def configure_scan(args):
             sys.exit(1)
     else:
         args.output = None
-        
 
+def finish_scan(args):
+    if args.output:
+        args.output.close()
+
+def print_line(line, output):
+    print line
+
+    if output:
+        output.write(line + '\n')
+
+def main():
+    # Check validity of commandline arguments
+    args = parse_arguments()
+
+    # Prepare services list
+    read_services()
+
+    # Configure scan
+    configure_scan(args)
+
+    try:
+        # Header
+        start_time = datetime.now()
+        print ''
+        print_line('Starting NmapPy %.2f ( %s ) at %s' % (VERSION, WEB_URL, start_time.strftime('%Y-%m-%d %H:%M %Z%z')), args.output)
+
+        targets_sorted = sorted(args.targets.keys(), key=lambda i: socket.inet_aton(i) if re.match('([0-9]{1,3}\.?){4}', i) is not None else '')
+        for target in targets_sorted:
+            ip = socket.gethostbyname(target)
+
+            # HOST DISCOVERY
+            ms = 0 # -1 = down; 0 = (forced) up; >0 = up with latency
+            report_line = 'NmapPy scan report for %s%s' % (target, ' (%s)' % ip if ip != target else '')
+
+            # Skip discovery if -Pn is set
+            if not args.skip_host_discovery:
+                ms = ping(ip, args.timing)
+
+                # Host is down
+                if ms == -1:
+                    # If only one host is scanned, display info line
+                    if len(args.targets) == 1:
+                        print_line('Note: Host seems down. If it is really up, but blocking our ping probes, try -Pn', args.output)
+
+                    # Store info that host is down
+                    args.targets[target] = (ip, ms, [])
+
+                    # Continue to next host, which results a scan finished in case only one host is scanned
+                    continue
+                # Host is up
+                else:
+                    print_line(report_line, args.output)
+            else:
+                print_line(report_line, args.output)
+            
+            latency = ''
+            if not args.skip_host_discovery:
+                latency = ' (%.2fs latency)' % (ms / 1000.0)
+            print_line('Host is up%s.' % latency, args.output)
 
 
