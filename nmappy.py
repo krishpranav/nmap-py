@@ -181,3 +181,43 @@ def ping(ip, timing):
     process.wait()
 
     return ms
+
+def check_port(host, proto, port, timeout):
+    result = False
+    try:
+        if proto == 'tcp':
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        else:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
+        sock.settimeout(1.0/timeout)
+        r = sock.connect_ex((host, port))
+
+        if r == 0:
+            result = True
+
+        sock.close()
+    except Exception:
+        pass
+
+
+    return result
+
+def read_services():
+    if not ALL_SERVICES_INCLUDED and os.path.isfile('nmap-services'):
+        sfile = csv.reader(open('nmap-services', 'r'), dialect='excel-tab')
+        global services
+        services = []
+        for s in sfile:
+            if not str(s[0]).startswith('#'):
+                services.append((s[1], s[0], s[2]))
+        
+        services = sorted(services, key=lambda s: s[2], reverse=True)
+
+    for s in services:
+        (port, proto) = str(s[0]).split('/')
+        (port, proto) = (int(port), proto)
+        services_lookup[proto][port] = s[1]
+        services_top[proto].append(port)
+
+
