@@ -96,3 +96,62 @@ def output_validate(value):
         raise argparse.ArgumentTypeError('Currently the XML output option is not supported')
     
     return value
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='NmapPy %.2f ( %s )' % (VERSION, WEB_URL), add_help=False)
+
+    # TARGET SPECIFICATION
+    target = parser.add_argument_group('TARGET SPECIFICATION')
+    input_options = target.add_mutually_exclusive_group(required=True)
+    input_options.add_argument('targets',                       action='store', nargs='?', type=target_spec, help='Can pass hostnames, IP addresses, networks, etc.')
+    input_options.add_argument('-iL',   dest='input_filename',  action='store', nargs='?', type=check_file_exists, default=None, help='Input from list of hosts/networks')
+
+    # HOST DISCOVERY
+    discovery = parser.add_argument_group('HOST DISCOVERY')
+    discovery.add_argument('-Pn',       dest='skip_host_discovery', action='store_true', help='Treat all hosts as online -- skip host discovery')
+    discovery.add_argument('-sn',       dest='ping_scan',       action='store_true', help='Ping Scan - disable port scan')
+
+    # SCAN TECHNIQUES
+    scantech = parser.add_argument_group('SCAN TECHNIQUES')
+    scantech.add_argument('-s',         dest='scan_technique',  action='store', type=scan_technique, choices='TU', default='T', help='TCP Connect()/UDP scan (not implemented)')
+
+    # PORT SPECIFICATION AND SCAN ORDER
+    portspec = parser.add_argument_group('PORT SPECIFICATION AND SCAN ORDER')
+    portspec.add_argument('-p',         dest='ports',           action='store', type=port_specification, help='Only scan specified ports')
+    portspec.add_argument('--top-ports',dest='top_ports',       action='store', type=int, default=1000, help='Scan <number> most common ports')
+    portspec.add_argument('-F',         dest='top_ports',       action='store_const', default=False, const=100, help='Fast mode - Scan fewer ports than the default scan')
+    portspec.add_argument('-r',         dest='ports_randomize', action='store_false', help='Scan ports consecutively - don\'t randomize')
+
+    # SERVICE/VERSION DETECTION
+    # -
+
+    # SCRIPT SCAN
+    # -
+
+    # OS DETECTION
+    # -
+
+    # TIMING AND PERFORMANCE
+    performance = parser.add_argument_group('TIMING AND PERFORMANCE')
+    performance.add_argument('-T',      dest='timing',          action='store', type=int, choices=[i for i in xrange(1,6)], default=3, help='Set timing template (higher is faster)')
+
+    # FIREWALL/IDS EVASION AND SPOOFING
+    # -
+
+    # OUTPUT
+    output = parser.add_argument_group('OUTPUT')
+    output.add_argument('-v',           dest='verbosity',       action='count', default=0, help='Increase verbosity level (use -vv or more for greater effect)')
+    output.add_argument('-o',           dest='output_type',     action='store', choices='NX', type=output_validate, help='Output scan in normal/XML (not implemented)')
+    output.add_argument('output_file',  help='File name/location', nargs='?')
+
+    # MISC
+    misc = parser.add_argument_group('MISC')
+    misc.add_argument('-h', '--help', action='help', help='Print this help summary page.')
+
+    # Always show full help when no arguments are provided
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(1)
+
+    return parser.parse_args()
