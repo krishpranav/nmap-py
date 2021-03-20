@@ -70,3 +70,24 @@ def read_input_list(args):
     
     return targets
 
+def scan_technique(value):
+    if value == 'U':
+        raise argparse.ArgumentTypeError('UDP is not supported at this moment')
+    if len(value) > 1:
+        raise argparse.ArgumentTypeError('Current a combination of TCP and UDP is not supported')
+    
+    return value
+
+def port_specification(value):
+    ports = []
+    if len(value) > 0:
+        for part in value.split(','):
+            if '-' in part:
+                range = map(int, part.split('-'))
+                for p in xrange(range[0], range[1] + 1):
+                    ports.append(p)
+            else:
+                ports.append(int(part))
+
+    return ports
+
