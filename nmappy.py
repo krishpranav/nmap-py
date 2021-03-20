@@ -220,4 +220,38 @@ def read_services():
         services_lookup[proto][port] = s[1]
         services_top[proto].append(port)
 
+def configure_scan(args):
+    if args.input_filename is not None:
+        args.targets = read_input_list(args)
+    
+    if args.scan_technique == 'T':
+        args.proto = 'tcp'
+    else:
+        args.proto = 'udp'
+    
+    if not args.ports:
+        ports = []
+        for s in services_top[args.proto]:
+            ports.append(s)
+
+            if len(ports) == args.top_ports:
+                break
+        
+        args.ports = ports
+    
+    if args.ports_randomize:
+        random.shuffle(args.ports)
+    
+    if args.output_type == 'N':
+        try:
+            f = open(args.output_file, 'w', 0)
+            args.output = f
+        except IOError as e:
+            print "I/O error({0}): {1}".format(e.errno, e.strerror)
+            sys.exit(1)
+    else:
+        args.output = None
+        
+
+
 
