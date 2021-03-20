@@ -79,4 +79,11 @@ def update_py(services, nmappy_file, number):
     print '[+] Saving updated script to \'%s\'' % nmappy_file
     with open(nmappy_file, 'w') as f:
         f.write(new_script)
-    
+
+def main():
+    args = parse_arguments()
+    services = read_services(args.nmap_services_file)
+    update_py(services, args.nmappy_file, args.number)
+
+if __name__ == '__main__':
+    main()
