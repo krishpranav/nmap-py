@@ -56,45 +56,62 @@ def target_spec(value):
 
     return targets
 
+
 def check_file_exists(value):
     if not os.path.isfile(value):
         raise argparse.ArgumentTypeError('File \'%s\' does not exist.' % value)
 
     return value
 
+
 def read_input_list(args):
     targets = {}
     with open(args.input_filename, 'r') as input:
         for line in input:
             dict.update(targets, target_spec(line.strip()))
-    
+
     return targets
 
+
+# SCAN TECHNIQUES
+# Implemented: -sT, -sU
+# URL: https://nmap.org/book/man-port-scanning-techniques.html
 def scan_technique(value):
     if value == 'U':
-        raise argparse.ArgumentTypeError('UDP is not supported at this moment')
+        raise argparse.ArgumentTypeError('UDP is not supported at this moment.')
     if len(value) > 1:
-        raise argparse.ArgumentTypeError('Current a combination of TCP and UDP is not supported')
-    
+        raise argparse.ArgumentTypeError('Currently a combination of TCP and UDP is not supported.')
+
     return value
 
+
+# PORT SPECIFICATION AND SCAN ORDER
+# Implemented: -p, --top-ports
+# URL: https://nmap.org/book/man-port-specification.html
 def port_specification(value):
     ports = []
+    # Use specified ports
     if len(value) > 0:
         for part in value.split(','):
+            # Port range
             if '-' in part:
                 range = map(int, part.split('-'))
                 for p in xrange(range[0], range[1] + 1):
                     ports.append(p)
+            # Single port
             else:
                 ports.append(int(part))
 
     return ports
 
+
+# OUTPUT
+# Implemented: -oN
+# URL: https://nmap.org/book/man-output.html
 def output_validate(value):
     if value == 'X':
-        raise argparse.ArgumentTypeError('Currently the XML output option is not supported')
-    
+        raise argparse.ArgumentTypeError('Currently the XML output option is not supported.')
+
     return value
 
 
@@ -156,6 +173,7 @@ def parse_arguments():
 
     return parser.parse_args()
 
+
 def ping(ip, timing):
     # Windows (win32)
     if sys.platform == 'win32':
@@ -169,18 +187,22 @@ def ping(ip, timing):
         # Success: 1 packets transmitted, 1 received, 0% packet loss, time 0ms
         # Fail: [empty]
         pattern = '^1 packets transmitted, 1 received, 0% packet loss, time (?P<MS>([0-9]+))ms$'
-    
+
+    # Execute command
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE)
     output = process.communicate()[0]
 
+    # Extract milliseconds from output
     ms = -1
-    m = re.search(pattern, output, flag=re.MULTILINE)
+    m = re.search(pattern, output, flags=re.MULTILINE)
     if m is not None:
         ms = int(m.group('MS'))
-    
+
+    # Exit process
     process.wait()
 
     return ms
+
 
 def check_port(host, proto, port, timeout):
     result = False
@@ -200,10 +222,11 @@ def check_port(host, proto, port, timeout):
     except Exception:
         pass
 
-
     return result
 
+
 def read_services():
+    # Read services from file, if available; otherwise the (limited) built-in list will be used
     if not ALL_SERVICES_INCLUDED and os.path.isfile('nmap-services'):
         sfile = csv.reader(open('nmap-services', 'r'), dialect='excel-tab')
         global services
@@ -211,24 +234,29 @@ def read_services():
         for s in sfile:
             if not str(s[0]).startswith('#'):
                 services.append((s[1], s[0], s[2]))
-        
+
         services = sorted(services, key=lambda s: s[2], reverse=True)
 
+    # Process list for easier usage
     for s in services:
         (port, proto) = str(s[0]).split('/')
         (port, proto) = (int(port), proto)
         services_lookup[proto][port] = s[1]
         services_top[proto].append(port)
 
+
 def configure_scan(args):
+    # If -iL (input list) is provided, fill targets based on this
     if args.input_filename is not None:
         args.targets = read_input_list(args)
-    
+
+    # Determine protocol based on Port Scanning Technique
     if args.scan_technique == 'T':
         args.proto = 'tcp'
     else:
         args.proto = 'udp'
-    
+
+    # In case no ports are provided, use top-ports
     if not args.ports:
         ports = []
         for s in services_top[args.proto]:
@@ -236,12 +264,14 @@ def configure_scan(args):
 
             if len(ports) == args.top_ports:
                 break
-        
+
         args.ports = ports
-    
+
+    # Randomize order of ports
     if args.ports_randomize:
         random.shuffle(args.ports)
-    
+
+    # Output
     if args.output_type == 'N':
         try:
             f = open(args.output_file, 'w', 0)
@@ -252,15 +282,19 @@ def configure_scan(args):
     else:
         args.output = None
 
+
 def finish_scan(args):
+    # Close output file handle
     if args.output:
         args.output.close()
+
 
 def print_line(line, output):
     print line
 
     if output:
         output.write(line + '\n')
+
 
 def main():
     # Check validity of commandline arguments
@@ -306,26 +340,74 @@ def main():
                     print_line(report_line, args.output)
             else:
                 print_line(report_line, args.output)
-            
+
+            # Host status line
             latency = ''
             if not args.skip_host_discovery:
                 latency = ' (%.2fs latency)' % (ms / 1000.0)
             print_line('Host is up%s.' % latency, args.output)
 
+            # Skip port scan in case of ping scan
             if args.ping_scan:
                 continue
-        
-            #port scan
+
+            # PORT SCAN
             table = AsciiTable(args.ports)
             table.print_heading()
             results = []
             for port in args.ports:
+                # Perform check and store result
                 state = check_port(ip, args.proto, port, args.timing)
                 results.append([port, state])
 
+                # Show all if number of ports to check is less than or equal to MAX_RESULTS_DISPLAY
                 if len(args.ports) <= MAX_RESULTS_DISPLAY or args.verbosity > 0 or state:
                     table.print_line(args.proto, port, state, args.output)
-            args.target[target] = (ip, ms, results)
+
+            args.targets[target] = (ip, ms, results)
+
+            # Summary per host: Closed ports
+            if len(args.ports) > MAX_RESULTS_DISPLAY:
+                hidden = len(args.ports) - len(filter(lambda r: r[1], results))
+                # All ports are closed
+                if hidden == len(args.ports):
+                    print_line('All %d scanned ports on %s are filtered' % (len(args.ports), ip), args.output)
+                # Some ports are open
+                elif hidden > 0:
+                    print_line('Not shown: %d closed ports' % hidden, args.output)
+
+            print_line('', args.output)
+
+        # Overall summary
+        end_time = datetime.now()
+        elapsed = (end_time - start_time)
+        targets_total = len(args.targets)
+        targets_up = len(filter(lambda t: args.targets[t][1] != -1, args.targets))
+        print_line(
+            'NmapPy done: %d IP address%s (%d host%s up) scanned in %d.%02d seconds' % (
+                targets_total,
+                'es' if targets_total > 1 else '', # XX IP address(es)
+                targets_up,
+                's' if targets_up > 1 else '', # (XX host(s) up)
+                elapsed.seconds,
+                elapsed.microseconds/10000),
+            args.output
+        )
+
+        # Round off scan
+        finish_scan(args)
+
+    except KeyboardInterrupt:
+        sys.exit(1)
+
+
+class AsciiTable:
+    def __init__(self, ports=None):
+        if not ports:
+            self.maxportwidth = len('65535/tcp')
+        else:
+            self.maxportwidth = len('%d/tcp' % max(ports))
+            
             
 
 
