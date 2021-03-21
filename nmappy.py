@@ -2426,6 +2426,17 @@ services = [
     ('3013/tcp', 'gilatskysurfer', '0.000152')
 ]
 
-            
+services_lookup = {
+    'tcp': {},
+    'udp': {},
+    'sctp': {}
+}
 
+services_top = {
+    'tcp': [],
+    'udp': [],
+    'sctip': []
+}
 
+if __name__ == '__main__':
+    main()
