@@ -407,7 +407,7 @@ class AsciiTable:
             self.maxportwidth = len('65535/tcp')
         else:
             self.maxportwidth = len('%d/tcp' % max(ports))
-            
+
             
 
 
