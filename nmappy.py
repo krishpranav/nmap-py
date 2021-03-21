@@ -407,6 +407,12 @@ class AsciiTable:
             self.maxportwidth = len('65535/tcp')
         else:
             self.maxportwidth = len('%d/tcp' % max(ports))
+    
+    def print_heading(self):
+        f = '{0: <%d} {1: <6} {2}' % self.maxportwidth
+        print f.format('PORT', 'STATE', 'SERVICE')
+
+    
 
             
 
