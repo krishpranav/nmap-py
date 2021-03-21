@@ -412,7 +412,17 @@ class AsciiTable:
         f = '{0: <%d} {1: <6} {2}' % self.maxportwidth
         print f.format('PORT', 'STATE', 'SERVICE')
 
-    
+    def print_line(self, proto, port, state, output):
+        f = '{0: <%d} {1: <6} {2}' % self.maxportwidth
+        print_line(f.format(
+            '%d/%s' % (port, proto),
+            'open' if state else 'closed',
+            services_lookup[proto][port] if (proto in services_lookup and port in services_lookup[proto]) else ''
+
+        ),
+        output)
+
+
 
             
 
